@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="NexusGuard Enterprise Cybersecurity Platform — AI-driven behavioral analysis, real-time threat detection, and blockchain audit trails.">
+    <title>NexusGuard — Enterprise Cybersecurity Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- RBAC Login Overlay -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <div class="login-logo-icon"></div>
+            <h2>NexusGuard</h2>
+            <p class="login-subtitle">Enterprise Cybersecurity Platform</p>
+            <label for="role-select" class="login-label">Select Your Role</label>
+            <select id="role-select" class="login-select">
+                <option value="admin">🛡️ Admin — Full Access</option>
+                <option value="analyst">🔍 Security Analyst — Resolve Alerts</option>
+                <option value="viewer">👁️ Viewer — Read Only</option>
+            </select>
+            <button id="login-btn" class="login-button">Enter Platform →</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>NexusGuard</h1>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-target="dashboard"><span class="icon">⊞</span> Dashboard</button>
+                <button class="nav-item" data-target="alerts"><span class="icon">⚠</span> Threat Alerts</button>
+                <button class="nav-item" data-target="endpoints"><span class="icon">🖥</span> Endpoints</button>
+                <button class="nav-item" data-target="blockchain"><span class="icon">⛓</span> Blockchain Logs</button>
+                <button class="nav-item" data-target="ai-assistant"><span class="icon">🤖</span> AI Assistant</button>
+            </nav>
+            <div class="system-status">
+                <div class="status-indicator active"></div>
+                <span>System Online</span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <h2 id="view-title">Overview Dashboard</h2>
+                <div class="user-profile">
+                    <span class="role" id="current-user-role">Admin</span>
+                    <div class="avatar"></div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- ===== DASHBOARD VIEW ===== -->
+                <section id="dashboard" class="view active">
+                    <!-- Row 1: Stat Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card" id="card-endpoints">
+                            <div class="stat-card-icon">🖥</div>
+                            <div class="stat-card-body">
+                                <h3>Active Endpoints</h3>
+                                <div class="stat-value" id="stat-endpoints">0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card card-critical" id="card-threats">
+                            <div class="stat-card-icon">⚠</div>
+                            <div class="stat-card-body">
+                                <h3>Active Threats</h3>
+                                <div class="stat-value" id="stat-threats">0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card" id="card-cpu">
+                            <div class="stat-card-icon">⚡</div>
+                            <div class="stat-card-body">
+                                <h3>Avg CPU Usage</h3>
+                                <div class="stat-value" id="stat-cpu">0%</div>
+                            </div>
+                        </div>
+                        <div class="stat-card card-secure" id="card-risk">
+                            <div class="stat-card-icon">🛡</div>
+                            <div class="stat-card-body">
+                                <h3>Risk Score</h3>
+                                <div class="stat-value" id="stat-risk">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Risk Score Visualization + System Health -->
+                    <div class="dashboard-row-2">
+                        <div class="panel risk-panel">
+                            <h3>🎯 Risk Score Overview</h3>
+                            <div class="risk-gauge-container">
+                                <svg class="risk-gauge" viewBox="0 0 200 120">
+                                    <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
+                                    <path class="gauge-fill" id="gauge-fill" d="M 20 100 A 80 80 0 0 1 180 100" />
+                                    <text x="100" y="90" class="gauge-text" id="gauge-text">0</text>
+                                    <text x="100" y="110" class="gauge-label" id="gauge-label">Calculating...</text>
+                                </svg>
+                            </div>
+                            <div class="risk-breakdown" id="risk-breakdown">
+                                <div class="risk-row"><span class="risk-dot critical"></span> Critical <span class="risk-count" id="risk-critical">0</span></div>
+                                <div class="risk-row"><span class="risk-dot high"></span> High <span class="risk-count" id="risk-high">0</span></div>
+                                <div class="risk-row"><span class="risk-dot medium"></span> Medium <span class="risk-count" id="risk-medium">0</span></div>
+                                <div class="risk-row"><span class="risk-dot low"></span> Low <span class="risk-count" id="risk-low">0</span></div>
+                            </div>
+                        </div>
+                        <div class="panel health-panel">
+                            <h3>💚 System Health</h3>
+                            <div class="health-metrics">
+                                <div class="health-metric">
+                                    <div class="health-label">CPU</div>
+                                    <div class="health-bar-outer"><div class="health-bar-inner" id="health-cpu"></div></div>
+                                    <div class="health-value" id="health-cpu-val">0%</div>
+                                </div>
+                                <div class="health-metric">
+                                    <div class="health-label">Memory</div>
+                                    <div class="health-bar-outer"><div class="health-bar-inner" id="health-mem"></div></div>
+                                    <div class="health-value" id="health-mem-val">0%</div>
+                                </div>
+                                <div class="health-metric">
+                                    <div class="health-label">Network</div>
+                                    <div class="health-bar-outer"><div class="health-bar-inner" id="health-net"></div></div>
+                                    <div class="health-value" id="health-net-val">Stable</div>
+                                </div>
+                                <div class="health-metric">
+                                    <div class="health-label">Blockchain</div>
+                                    <div class="health-bar-outer"><div class="health-bar-inner" id="health-bc" style="width:100%; background:var(--accent);"></div></div>
+                                    <div class="health-value" id="health-bc-val">Secured</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Alerts Feed + Endpoint Health -->
+                    <div class="dashboard-panels">
+                        <div class="panel">
+                            <h3>🔔 Real-Time Alerts</h3>
+                            <div class="alerts-feed" id="dashboard-alerts">
+                                <div class="loading">Analyzing behavioral patterns...</div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h3>📡 Endpoint Health</h3>
+                            <div class="endpoints-feed" id="dashboard-endpoints"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== ALERTS VIEW ===== -->
+                <section id="alerts" class="view">
+                    <div class="panel full-height">
+                        <h3>🔍 Detailed Threat Intelligence</h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Endpoint</th>
+                                        <th>Risk Level</th>
+                                        <th>Description</th>
+                                        <th>Root Cause & Remediation</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="alerts-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- ===== ENDPOINTS VIEW ===== -->
+                <section id="endpoints" class="view">
+                    <div class="panel full-height">
+                        <h3>🖥 Device Management</h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Endpoint ID</th>
+                                        <th>Status</th>
+                                        <th>CPU</th>
+                                        <th>Memory</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="endpoints-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== BLOCKCHAIN VIEW ===== -->
+                <section id="blockchain" class="view">
+                    <div class="panel full-height">
+                        <div class="blockchain-header">
+                            <h3 style="margin:0; border:none; padding:0;">⛓ Immutable Audit Ledger</h3>
+                            <div id="blockchain-status" class="bc-status">Verifying Cryptographic Integrity...</div>
+                        </div>
+                        <div class="table-container" id="blockchain-container" style="display:flex; flex-direction:column; gap:16px; padding:10px;"></div>
+                    </div>
+                </section>
+
+                <!-- ===== AI ASSISTANT VIEW ===== -->
+                <section id="ai-assistant" class="view">
+                    <div class="panel full-height ai-chat-panel">
+                        <h3>🤖 Cybersecurity AI Assistant</h3>
+                        <div class="chat-window" id="chat-window">
+                            <div class="message ai">
+                                Hello! I'm your NexusGuard AI Security Assistant. I can help you understand alerts, provide remediation steps, and share cybersecurity best practices.<br><br>
+                                Try asking me anything below, or click a suggestion to get started.
+                            </div>
+                        </div>
+                        <div class="suggested-prompts" id="suggested-prompts">
+                            <button class="prompt-chip">📊 System status</button>
+                            <button class="prompt-chip">🔍 Explain alerts</button>
+                            <button class="prompt-chip">🎯 Risk score</button>
+                            <button class="prompt-chip">💡 Give me a tip</button>
+                            <button class="prompt-chip">📚 What is phishing?</button>
+                            <button class="prompt-chip">🛠️ What should I do?</button>
+                        </div>
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input" placeholder="Ask about threats, mitigation, or cybersecurity topics...">
+                            <button id="send-chat">Send</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
