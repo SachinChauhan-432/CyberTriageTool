@@ -7,10 +7,16 @@ import getpass
 import hashlib
 import hmac
 import json
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from project root
+dotenv_path = Path(__file__).parent.parent.parent / '.env'
+load_dotenv(dotenv_path=dotenv_path)
 
 ANALYTICS_URL = "http://localhost:5001/submit_metrics"
-AGENT_AUTH_KEY = "nx-agent-secure-token-v1"
-HMAC_SECRET = "NxG-HMAC-Integrity-2026"
+AGENT_AUTH_KEY = os.getenv("AGENT_AUTH_TOKEN", "nx-agent-secure-token-v1")
+HMAC_SECRET = os.getenv("HMAC_SECRET", "NxG-HMAC-Integrity-2026")
 ENDPOINT_ID = socket.gethostname()
 
 try:
@@ -86,6 +92,8 @@ def get_real_metrics():
         "timestamp": current_time
     }
 
+from activity_ingestor import ActivityIngestor
+
 ISOLATED = False
 consecutive_failures = 0
 MAX_RETRIES = 3
@@ -96,8 +104,38 @@ def run_agent():
     print(f"    Endpoint ID: {ENDPOINT_ID}")
     print(f"    User ID: {USER_ID}")
     print(f"    HMAC Integrity: Enabled")
-    print(f"    Target Server: {ANALYTICS_URL}")
     
+    # Phase 1 & 2: Historical Activity Ingestion
+    print(f"[*] Initiating Historical Activity Data Ingestion...")
+    ingestor = ActivityIngestor()
+    if ingestor.request_consent():
+        historical_data = ingestor.ingest_windows_activity()
+        
+        # Send baseline to server
+        headers = {
+            "Authorization": f"Bearer {AGENT_AUTH_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        baseline_payload = {
+            "endpoint_id": ENDPOINT_ID,
+            "user_id": USER_ID,
+            "historical_activity": historical_data
+        }
+        
+        signature = generate_payload_signature(baseline_payload)
+        headers["X-Payload-Signature"] = signature
+        
+        try:
+            baseline_url = ANALYTICS_URL.replace("/submit_metrics", "/submit_baseline")
+            res = requests.post(baseline_url, json=baseline_payload, headers=headers, timeout=10)
+            if res.status_code == 200:
+                print(f"[+] Historical baseline securely uploaded to AI Engine.")
+            else:
+                print(f"[-] Baseline upload failed: {res.status_code}")
+        except Exception as e:
+            print(f"[-] Baseline upload error: {e}")
+            
     # Initial call to cpu_percent to set the baseline for measurement
     psutil.cpu_percent(interval=1)
     
@@ -115,7 +153,7 @@ def run_agent():
                 
             data = get_real_metrics()
             
-            # Phase 12: Sign payload with HMAC for integrity verification
+            # Sign payload with HMAC for integrity verification
             signature = generate_payload_signature(data)
             headers["X-Payload-Signature"] = signature
             
@@ -125,45 +163,35 @@ def run_agent():
             if response.status_code == 200:
                 consecutive_failures = 0
                 resp_data = response.json()
-                print(f"[+] Metrics -> CPU: {data['cpu_usage']}% | Mem: {data['memory_usage']}% | Procs: {len(data['active_processes'])} | IPs: {len(data['recent_urls'])} | HMAC: ✔")
+                print(f"[+] Metrics -> CPU: {data['cpu_usage']}% | Mem: {data['memory_usage']}% | Procs: {len(data['active_processes'])} | IPs: {len(data['recent_urls'])} | HMAC: OK")
                 
-                # Phase 8: Execute Automated Responses
+                # Execute Automated Responses
                 actions = resp_data.get("response_actions", [])
                 for action in actions:
                     if action["action"] == "kill_process":
                         target = action["target"]
-                        print(f"\n[!] AUTOMATED RESPONSE TRIGGERED:")
-                        print(f"    -> Terminating Malicious Process: {target}")
+                        print(f"\n[!] AUTOMATED RESPONSE TRIGGERED: Terminating {target}")
                         os.system(f"taskkill /F /IM {target} >nul 2>&1")
                         
                     elif action["action"] == "isolate_network":
-                        print(f"\n[!!!] AUTOMATED RESPONSE TRIGGERED: CRITICAL THREAT")
-                        print(f"    -> Isolating Endpoint {ENDPOINT_ID} from Network.")
+                        print(f"\n[!!!] AUTOMATED RESPONSE TRIGGERED: ISOLATING ENDPOINT")
                         ISOLATED = True
 
+            elif response.status_code == 401:
+                print(f"[!] Authentication Failed (401). Check AGENT_AUTH_TOKEN in .env")
+                time.sleep(10)
             elif response.status_code == 429:
-                print(f"[!] Rate limited by server. Backing off...")
+                print(f"[!] Rate limited. Backing off...")
                 time.sleep(10)
             else:
-                print(f"[-] Server returned status {response.status_code}")
+                print(f"[-] Server error {response.status_code}: {response.text}")
                 
-        except requests.exceptions.Timeout:
-            consecutive_failures += 1
-            print(f"[-] Request timed out. Failure {consecutive_failures}/{MAX_RETRIES}")
-        except requests.exceptions.ConnectionError:
-            consecutive_failures += 1
-            print(f"[-] Central server unreachable. Failure {consecutive_failures}/{MAX_RETRIES}")
         except Exception as e:
             consecutive_failures += 1
-            print(f"[-] Error collecting metrics: {e}")
-        
-        # Exponential backoff on consecutive failures
-        if consecutive_failures > 0:
-            backoff = min(5 * (2 ** (consecutive_failures - 1)), 60)
-            print(f"    Retrying in {backoff}s...")
-            time.sleep(backoff)
-        else:
+            print(f"[-] Error: {e}")
             time.sleep(5)
+        
+        time.sleep(5)
 
 if __name__ == "__main__":
     run_agent()

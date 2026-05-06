@@ -25,8 +25,12 @@ def get_profile_path(endpoint_id, user_id):
 def load_categorical_profile(endpoint_id, user_id):
     path = get_profile_path(endpoint_id, user_id)
     if os.path.exists(path):
-        with open(path, 'r') as f:
-            return json.load(f)
+        try:
+            with open(path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[-] Error loading profile: {e}")
+            return {"processes": [], "ips": []}
     return {"processes": [], "ips": []}
 
 def save_categorical_profile(endpoint_id, user_id, profile):
@@ -90,9 +94,26 @@ def update_baseline(endpoint_id, user_id):
     save_categorical_profile(endpoint_id, user_id, profile)
     return True
 
+def update_baseline_from_historical(endpoint_id, user_id, historical_data):
+    """
+    Phase 5: Baseline Learning Engine (Historical Data Ingestion)
+    Parses Windows Activity data to build a baseline of normal app usage.
+    """
+    profile = load_categorical_profile(endpoint_id, user_id)
+    known_procs = set(profile.get("processes", []))
+    
+    for entry in historical_data:
+        app = entry.get("app_name")
+        if app and app.lower() not in [p.lower() for p in known_procs]:
+            known_procs.add(app)
+            
+    profile["processes"] = list(known_procs)
+    save_categorical_profile(endpoint_id, user_id, profile)
+    print(f"[+] AI Model learned {len(known_procs)} safe applications from Historical Activity.")
+
 SUSPICIOUS_PROCS = ["miner", "hack", "mimikatz", "ncat", "nc.exe", "crypto", "ransom", "payload", "cmd.exe", "powershell.exe"]
 
-def analyze_behavior(data):
+def analyze_behavior(data, is_learning=False):
     """
     Uses the trained ML model and learned categorical profile to detect anomalies.
     Classifies anomalies by severity (Low, Medium, High, Critical) and returns structured intelligent alerts.
@@ -174,7 +195,7 @@ def analyze_behavior(data):
                 if mem > 95:
                     alerts.append(create_alert("High", "Critical Memory Usage", "N/A", "Unknown", "Severe memory leak or memory exhaustion attack.", "1. Terminate high-RAM applications. 2. Increase swap space or reboot."))
                     
-                if not any(a['description'] in ["Critical CPU Spike", "Unusual CPU Spike", "Massive Data Exfiltration Risk", "High Outbound Traffic", "Critical Memory Usage"] for a in alerts):
+                if not is_learning and not any(a['description'] in ["Critical CPU Spike", "Unusual CPU Spike", "Massive Data Exfiltration Risk", "High Outbound Traffic", "Critical Memory Usage"] for a in alerts):
                     alerts.append(create_alert("Low", "Minor Behavioral Deviation", "N/A", "N/A", "General resource consumption pattern shifted slightly from the ML baseline.", "1. No immediate action required. 2. Log for future behavioral auditing."))
                     
         except Exception as e:
@@ -189,7 +210,7 @@ def analyze_behavior(data):
             is_suspicious = any(kw in p.lower() for kw in SUSPICIOUS_PROCS)
             if is_suspicious:
                 alerts.append(create_alert("Critical", f"Suspicious Process Executed: {p}", "N/A", p, "User or attacker launched a known malicious binary or hacking tool.", f"1. Kill process '{p}'. 2. Isolate endpoint. 3. Initiate full EDR scan."))
-            else:
+            elif not is_learning:
                 alerts.append(create_alert("Medium", f"Unknown Process Executed: {p}", "N/A", p, "A benign-looking application was started that has never been used by this user.", f"1. Verify if '{p}' is company-approved. 2. Monitor for further anomalous actions."))
             
         current_ips = data.get('recent_urls', [])
@@ -198,7 +219,7 @@ def analyze_behavior(data):
         for ip in new_ips:
             if net_tx > 15:
                 alerts.append(create_alert("Critical", f"Abnormal IP Connection with Data Transfer", ip, "Unknown", "Endpoint is funneling large amounts of data to an unverified IP address.", f"1. Isolate endpoint. 2. Block IP {ip} at gateway firewall. 3. Analyze what data was exfiltrated."))
-            else:
+            elif not is_learning:
                 alerts.append(create_alert("Low", f"Irregular Website/IP Usage", ip, "Unknown", "Endpoint navigated to an IP that is not in its historical baseline.", f"1. Log IP {ip} for threat intel correlation. 2. No immediate action required."))
             
     return alerts

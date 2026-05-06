@@ -71,6 +71,14 @@ def proxy_resolve_alert(alert_id):
     except Exception as e:
         return jsonify({"error": "Analytics Engine is offline"}), 503
 
+@app.route('/api/alerts/false_positive/<alert_id>', methods=['POST'])
+def proxy_mark_false_positive(alert_id):
+    try:
+        resp = requests.post(f"{ANALYTICS_URL}/api/alerts/false_positive/{alert_id}", timeout=5)
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({"error": "Analytics Engine is offline"}), 503
+
 @app.route('/api/endpoints/isolate/<endpoint_id>', methods=['POST'])
 def proxy_isolate_endpoint(endpoint_id):
     try:

@@ -90,6 +90,16 @@
                         </div>
                     </div>
 
+                    <!-- AI Learning Phase Indicator -->
+                    <div class="panel" id="learning-panel" style="display: none; margin-bottom: 20px;">
+                        <h3 style="color: var(--warning); margin-bottom: 10px;">🧠 AI Baseline Learning in Progress...</h3>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">The system is currently observing endpoint behavior to build a safe application profile before activating full anomaly detection.</p>
+                        <div class="metric-bar-container" style="height: 12px; border-radius: 6px;">
+                            <div class="metric-bar" id="learning-bar" style="width: 0%; background: var(--warning); transition: width 0.5s;"></div>
+                        </div>
+                        <div style="text-align: right; font-size: 11px; margin-top: 5px; color: var(--text-muted);" id="learning-text">0% Complete</div>
+                    </div>
+
                     <!-- Row 2: Risk Score Visualization + System Health -->
                     <div class="dashboard-row-2">
                         <div class="panel risk-panel">
@@ -153,22 +163,24 @@
 
                 <!-- ===== ALERTS VIEW ===== -->
                 <section id="alerts" class="view">
-                    <div class="panel full-height">
-                        <h3>🔍 Detailed Threat Intelligence</h3>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Time</th>
-                                        <th>Endpoint</th>
-                                        <th>Risk Level</th>
-                                        <th>Description</th>
-                                        <th>Root Cause & Remediation</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="alerts-table-body"></tbody>
-                            </table>
+                    <div class="panel full-height" style="background: transparent; border: none; padding: 0;">
+                        <h3 style="margin-bottom: 15px;">🔍 Triage Board (Alert Management)</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; height: 100%;">
+                            <!-- LOW ALERTS -->
+                            <div class="alert-column" style="background: var(--bg-lighter); border-radius: 12px; padding: 15px; overflow-y: auto; height: calc(100vh - 180px);">
+                                <h4 style="color: var(--accent); margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">🟢 LOW SEVERITY</h4>
+                                <div id="alerts-col-low" class="alert-feed"></div>
+                            </div>
+                            <!-- MEDIUM ALERTS -->
+                            <div class="alert-column" style="background: var(--bg-lighter); border-radius: 12px; padding: 15px; overflow-y: auto; height: calc(100vh - 180px);">
+                                <h4 style="color: var(--warning); margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">🟡 MEDIUM SEVERITY</h4>
+                                <div id="alerts-col-medium" class="alert-feed"></div>
+                            </div>
+                            <!-- HIGH/CRITICAL ALERTS -->
+                            <div class="alert-column" style="background: var(--bg-lighter); border-radius: 12px; padding: 15px; overflow-y: auto; height: calc(100vh - 180px);">
+                                <h4 style="color: var(--critical); margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">🔴 HIGH / CRITICAL</h4>
+                                <div id="alerts-col-high" class="alert-feed"></div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -176,7 +188,10 @@
                 <!-- ===== ENDPOINTS VIEW ===== -->
                 <section id="endpoints" class="view">
                     <div class="panel full-height">
-                        <h3>🖥 Device Management</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3>🖥 Device Management</h3>
+                            <button id="btn-open-register" class="action-btn resolve-btn" style="display: none;">+ Register Endpoint</button>
+                        </div>
                         <div class="table-container">
                             <table class="data-table">
                                 <thead>
@@ -232,6 +247,90 @@
             </div>
         </main>
     </div>
+
+    <!-- Alert Details Modal -->
+    <div id="alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-lighter); padding: 25px; border-radius: 12px; width: 600px; max-width: 90%; border: 1px solid rgba(255,255,255,0.1);">
+            <h3 id="modal-alert-title" style="margin-bottom: 15px; color: var(--critical);">Alert Description</h3>
+            <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <p><strong>Endpoint:</strong> <span id="modal-alert-endpoint"></span></p>
+                <p><strong>Severity:</strong> <span id="modal-alert-severity"></span></p>
+                <p><strong>Time:</strong> <span id="modal-alert-time"></span></p>
+                <p><strong>Process:</strong> <span id="modal-alert-process"></span></p>
+                <p><strong>Resource Usage:</strong> <span id="modal-alert-usage"></span></p>
+                <p><strong>Destination IP:</strong> <span id="modal-alert-ip"></span></p>
+            </div>
+            <div style="margin-bottom: 15px; font-size: 14px;">
+                <h4 style="color: var(--warning); margin-bottom: 5px;">Root Cause</h4>
+                <p id="modal-alert-cause" style="color: var(--text-muted);"></p>
+            </div>
+            <div style="margin-bottom: 25px; font-size: 14px;">
+                <h4 style="color: var(--accent); margin-bottom: 5px;">Mitigation Steps</h4>
+                <p id="modal-alert-fix" style="color: var(--text-muted);"></p>
+            </div>
+            <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                <button class="action-btn" style="background: transparent; border: 1px solid var(--text-muted); color: var(--text-main);" onclick="document.getElementById('alert-modal').style.display='none'">Cancel</button>
+                <button class="action-btn resolve-btn" id="btn-mark-fp">Mark as False Positive</button>
+                <button class="action-btn isolate-btn" id="btn-mark-resolved">Mark as Resolved</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Endpoint Detail Modal (Admin) -->
+    <div id="endpoint-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-lighter); padding: 25px; border-radius: 12px; width: 800px; max-width: 90%; border: 1px solid rgba(255,255,255,0.1); max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 id="modal-ep-title">Endpoint Details</h3>
+                <button class="action-btn" style="background: transparent; color: var(--text-muted);" onclick="document.getElementById('endpoint-modal').style.display='none'">Close</button>
+            </div>
+            <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+                <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; text-align: center;">
+                    <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">Medium Threats</h4>
+                    <div id="modal-ep-med-count" style="font-size: 24px; color: var(--warning); font-weight: bold; margin-top: 5px;">0</div>
+                </div>
+                <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; text-align: center;">
+                    <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase;">High/Critical Threats</h4>
+                    <div id="modal-ep-high-count" style="font-size: 24px; color: var(--critical); font-weight: bold; margin-top: 5px;">0</div>
+                </div>
+            </div>
+            <div style="flex: 1; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 10px;">
+                    <h4>Active Threats</h4>
+                    <button class="action-btn isolate-btn" id="btn-admin-isolate" style="display: none;">ISOLATE SYSTEM</button>
+                </div>
+                <div id="modal-ep-alerts-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSON Real-Time Alert Modal -->
+    <div id="json-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-lighter); padding: 25px; border-radius: 12px; width: 600px; max-width: 90%; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Raw Alert Payload (JSON)</h3>
+                <button class="action-btn" style="background: transparent; color: var(--text-muted);" onclick="document.getElementById('json-modal').style.display='none'">Close</button>
+            </div>
+            <pre id="json-modal-content" style="background: #1e1e1e; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 12px; color: #d4d4d4;"></pre>
+        </div>
+    </div>
+
+    <!-- Admin Tools Modal -->
+    <div id="admin-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-lighter); padding: 25px; border-radius: 12px; width: 400px; border: 1px solid rgba(255,255,255,0.1);">
+            <h3 style="margin-bottom: 15px;">Register Endpoint</h3>
+            <input type="text" id="admin-mac-input" placeholder="MAC Address (e.g. 00:1A:2B:3C:4D:5E)" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white;">
+            <input type="text" id="admin-device-input" placeholder="Device Name" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white;">
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="action-btn" style="background: transparent;" onclick="document.getElementById('admin-modal').style.display='none'">Cancel</button>
+                <button class="action-btn isolate-btn" style="background: var(--primary);" id="btn-register-ep">Register</button>
+            </div>
+            
+            <h4 style="margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Registered Endpoints</h4>
+            <div id="admin-ep-list" style="max-height: 150px; overflow-y: auto; font-size: 12px;"></div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
+    <script src="admin.js"></script>
 </body>
 </html>

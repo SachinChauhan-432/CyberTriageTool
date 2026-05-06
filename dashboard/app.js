@@ -105,8 +105,18 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('risk-medium').textContent = medium;
         document.getElementById('risk-low').textContent = low;
 
-        // Score: 0 (safe) to 100 (dire)
-        const score = Math.min(100, critical * 25 + high * 10 + medium * 3 + low * 1);
+        // Intelligent Risk Scoring algorithm
+        let score = 0;
+        if (critical > 0) {
+            score = 100; // Any critical active threat maxes out risk
+        } else if (high > 0) {
+            score = Math.min(90, 75 + (high * 5) + (medium * 1));
+        } else if (medium > 0) {
+            score = Math.min(70, 40 + (medium * 3) + (low * 0.5));
+        } else if (low > 0) {
+            score = Math.min(30, 10 + (low * 1));
+        }
+        score = Math.floor(score);
 
         // Gauge arc
         const maxDash = 251.2;
@@ -191,6 +201,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (endpointsData.length > 0) {
                 const avgCpu = (endpointsData.reduce((a, e) => a + e.cpu_usage, 0) / endpointsData.length).toFixed(1);
                 document.getElementById('stat-cpu').textContent = `${avgCpu}%`;
+                
+                // AI Learning Progress Indicator logic
+                let learningEndpoint = endpointsData.find(ep => ep.status === 'LEARNING' || ep.learning_progress < 100);
+                const learningPanel = document.getElementById('learning-panel');
+                if (learningEndpoint && learningEndpoint.learning_progress < 100) {
+                    if (learningPanel) learningPanel.style.display = 'block';
+                    const prog = learningEndpoint.learning_progress;
+                    document.getElementById('learning-bar').style.width = `${prog}%`;
+                    document.getElementById('learning-text').textContent = `${prog}% Complete (Analyzing endpoint ${learningEndpoint.endpoint_id})`;
+                } else {
+                    if (learningPanel) learningPanel.style.display = 'none';
+                }
             }
 
             // Dashboard: Endpoint Feed
@@ -224,8 +246,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         ? `<button class="action-btn isolate-btn" onclick="isolateEndpoint('${ep.endpoint_id}')">🔒 Isolate</button>`
                         : `<span style="color:var(--text-muted); font-size:11px;">Requires Admin</span>`;
 
+                    let endpointLabel = canControlDevices() 
+                        ? `<a href="#" onclick="openEndpointDetails('${ep.endpoint_id}')" style="color:var(--accent); text-decoration:none;"><strong>${ep.endpoint_id}</strong></a>` 
+                        : `<strong>${ep.endpoint_id}</strong>`;
+                        
                     tr.innerHTML = `
-                        <td><strong>${ep.endpoint_id}</strong><br><span style="font-size:11px; color:var(--text-muted)">Last: ${formatTime(ep.last_seen)}</span></td>
+                        <td>${endpointLabel}<br><span style="font-size:11px; color:var(--text-muted)">Last: ${formatTime(ep.last_seen)}</span></td>
                         <td><span class="badge" style="background:${isOnline ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isOnline ? 'var(--accent)' : 'var(--critical)'};">${ep.status}</span></td>
                         <td>
                             <div class="metric-bar-container"><div class="metric-bar" style="width:${ep.cpu_usage}%; background:${ep.cpu_usage > 80 ? 'var(--critical)' : 'var(--primary)'}"></div></div>
@@ -240,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     epTbody.appendChild(tr);
                 });
             }
+            window.dispatchEvent(new CustomEvent('endpointsDataUpdated', { detail: endpointsData }));
         }
 
         // ---- Alerts ----
@@ -265,41 +292,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="alert-details">${d.root_cause || alert.details}</div>
                 `;
+                div.style.cursor = 'pointer';
+                div.onclick = () => window.openRealtimeAlertJson(alert);
                 alertsFeed.appendChild(div);
             });
 
             // Alerts Tab
             const tbody = document.getElementById('alerts-table-body');
-            tbody.innerHTML = '';
-            alertsData.forEach(alert => {
-                let d;
-                try { d = JSON.parse(alert.details); }
-                catch(e) {
-                    d = { root_cause: alert.details, remediation: 'N/A', metrics: 'N/A', process_name: 'N/A', destination_ip: 'N/A', source_ip: 'N/A', frequency: 1 };
-                }
+            if (tbody) {
+                tbody.innerHTML = '';
+                alertsData.forEach(alert => {
+                    let d;
+                    try { d = JSON.parse(alert.details); }
+                    catch(e) {
+                        d = { root_cause: alert.details, remediation: 'N/A', metrics: 'N/A', process_name: 'N/A', destination_ip: 'N/A', source_ip: 'N/A', frequency: 1 };
+                    }
 
-                let actionsHtml = canResolveAlerts()
-                    ? `<button class="action-btn resolve-btn" onclick="resolveAlert('${alert.id}')">✔ Resolve</button>`
-                    : `<span style="color:var(--text-muted); font-size:11px;">Read Only</span>`;
+                    let actionsHtml = canResolveAlerts()
+                        ? `<button class="action-btn resolve-btn" onclick="resolveAlert('${alert.id}')">✔ Resolve</button>`
+                        : `<span style="color:var(--text-muted); font-size:11px;">Read Only</span>`;
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${formatTime(alert.timestamp)}<br><span style="font-size:11px; color:var(--text-muted)">×${d.frequency || 1}</span></td>
-                    <td>${alert.endpoint_id}<br><span style="font-size:11px; color:var(--text-muted)">IP: ${d.source_ip || 'N/A'}</span></td>
-                    <td><span class="badge ${alert.risk_level}">${alert.risk_level}</span></td>
-                    <td>
-                        <strong>${alert.description}</strong><br>
-                        <span style="font-size:12px; color:var(--text-muted)">Proc: ${d.process_name} → ${d.destination_ip}</span><br>
-                        <span style="font-size:11px; color:var(--text-muted)">${d.metrics}</span>
-                    </td>
-                    <td>
-                        <div style="margin-bottom:4px; font-size:12px;"><strong style="color:var(--warning);">Cause:</strong> ${d.root_cause}</div>
-                        <div style="font-size:12px;"><strong style="color:var(--accent);">Fix:</strong> ${d.remediation}</div>
-                    </td>
-                    <td>${actionsHtml}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${formatTime(alert.timestamp)}<br><span style="font-size:11px; color:var(--text-muted)">×${d.frequency || 1}</span></td>
+                        <td>${alert.endpoint_id}<br><span style="font-size:11px; color:var(--text-muted)">IP: ${d.source_ip || 'N/A'}</span></td>
+                        <td><span class="badge ${alert.risk_level}">${alert.risk_level}</span></td>
+                        <td>
+                            <strong>${alert.description}</strong><br>
+                            <span style="font-size:12px; color:var(--text-muted)">Proc: ${d.process_name} → ${d.destination_ip}</span><br>
+                            <span style="font-size:11px; color:var(--text-muted)">${d.metrics}</span>
+                        </td>
+                        <td>
+                            <div style="margin-bottom:4px; font-size:12px;"><strong style="color:var(--warning);">Cause:</strong> ${d.root_cause}</div>
+                            <div style="font-size:12px;"><strong style="color:var(--accent);">Fix:</strong> ${d.remediation}</div>
+                        </td>
+                        <td>${actionsHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            // Dispatch event for admin.js to render the new Triage Board
+            window.dispatchEvent(new CustomEvent('alertsDataUpdated', { detail: alertsData }));
         }
 
         // ---- System Health ----
