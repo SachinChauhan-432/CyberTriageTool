@@ -1,7 +1,7 @@
-# 🛡️ NexusGuard: Advanced Behavioral Cyber-Triage & EDR Platform
+# 🛡️Decentralised and Behavioural Analytical Cyber Triage Tool: Advanced Behavioural Cyber-Triage & EDR Platform
 
 ## 1. Executive Summary
-**NexusGuard** is a sophisticated Endpoint Detection and Response (EDR) platform that moves beyond traditional signature-based detection. It utilizes **Artificial Intelligence (AI)** to establish a behavioral baseline for each workstation and **Private Blockchain Technology** to maintain an immutable audit trail of all security events. 
+**Decentralised and Behavioural Analytical Cyber Triage Tool** is a sophisticated Endpoint Detection and Response (EDR) platform that moves beyond traditional signature-based detection. It utilizes **Artificial Intelligence (AI)** to establish a behavioural baseline for each workstation and **Private Blockchain Technology** to maintain an immutable audit trail of all security events.
 
 The project was conceived to solve the critical problem of "Zero-Day" attacks and "Alert Fatigue" in modern Security Operations Centers (SOCs).
 
