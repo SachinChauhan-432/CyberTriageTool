@@ -69,4 +69,4 @@ Stores learned patterns to reduce noise. It matches `process_name` + `destinatio
 ---
 
 ## 6. Why This Project Matters
-In a real-world enterprise environment, security analysts are overwhelmed. NexusGuard's **Automated Triage** and **False Positive Learning** reduce the manual workload by approximately 60%, allowing humans to focus on the 1% of threats that actually matter.
+Security analysts in enterprise settings have to deal with lots of alerts in reality. With the system utilising automated triage and false positive learning capabilities, manual investigation efforts are significantly reduced, with analysts able to focus on the small number of threats which truly need their immediate attention, down from almost 60%.
